@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+﻿import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import App from './App'
@@ -11,7 +11,7 @@ beforeEach(() => { window.localStorage.setItem('standup-board-profile', JSON.str
 describe('Standup Board shell', () => {
   it('shows an accessible loading state, then the empty board', async () => {
     render(<App />)
-    expect(screen.getByRole('status')).toHaveTextContent(/getting your team’s updates/i)
+    expect(screen.getByRole('status')).toHaveTextContent(/getting your team.s updates/i)
     expect(await screen.findByRole('heading', { name: 'A fresh start' })).toBeInTheDocument()
     expect(screen.getByRole('navigation', { name: 'Main navigation' })).toBeInTheDocument()
   })
@@ -20,9 +20,28 @@ describe('Standup Board shell', () => {
     const user = userEvent.setup()
     render(<App />)
     await screen.findByRole('heading', { name: 'A fresh start' })
-    await user.click(screen.getByRole('button', { name: /post your update/i }))
+    await user.click(screen.getByRole('button', { name: 'Post an update' }))
     expect(screen.getByRole('heading', { name: 'Share your update' })).toBeInTheDocument()
     expect(screen.getByLabelText(/what did you work on yesterday/i)).toBeInTheDocument()
+  })
+
+  it('posts an update, shows it on the board, and resolves its blocker', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+    await screen.findByRole('heading', { name: 'Good morning, Alex Morgan' })
+    await screen.findByRole('heading', { name: 'A fresh start' })
+    await user.click(screen.getByRole('button', { name: 'Post an update' }))
+    await user.type(screen.getByLabelText(/what did you work on yesterday/i), 'Finished the API')
+    await user.type(screen.getByLabelText(/what are you working on today/i), 'Review the design')
+    await user.type(screen.getByLabelText(/anything blocking you/i), 'Waiting on access')
+    await user.click(screen.getByRole('button', { name: 'Save update' }))
+    expect(await screen.findByText('Finished the API')).toBeInTheDocument()
+    expect(screen.getByText('Review the design')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: /Blockers/ }))
+    expect(screen.getByText('Waiting on access')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Mark resolved' }))
+    expect(await screen.findByRole('heading', { name: 'All clear for now' })).toBeInTheDocument()
+    expect(JSON.parse(window.localStorage.getItem('standup-board-updates') || '[]')[0].blockerStatus).toBe('resolved')
   })
 
   it('renders all fields for each update posted today', async () => {
