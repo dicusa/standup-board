@@ -3,6 +3,7 @@ import { cleanup, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import App from './App'
 import { loadProfile, saveProfile } from './profile'
+import { localDateKey } from './data'
 
 afterEach(() => { cleanup(); vi.restoreAllMocks(); window.localStorage.clear() })
 beforeEach(() => { window.localStorage.setItem('standup-board-profile', JSON.stringify({ name: 'Alex Morgan' })) })
@@ -22,6 +23,30 @@ describe('Standup Board shell', () => {
     await user.click(screen.getByRole('button', { name: /post your update/i }))
     expect(screen.getByRole('heading', { name: 'Share your update' })).toBeInTheDocument()
     expect(screen.getByLabelText(/what did you work on yesterday/i)).toBeInTheDocument()
+  })
+
+  it('renders all fields for each update posted today', async () => {
+    window.localStorage.setItem('standup-board-updates', JSON.stringify([
+      { id: 'alex-today', personName: 'Alex Morgan', yesterday: 'Finished the API', today: 'Review the design', blocker: 'Waiting on access', blockerStatus: 'blocked', updateDate: localDateKey() },
+      { id: 'sam-today', personName: 'Sam Lee', yesterday: 'Fixed a bug', today: 'Ship the patch', blocker: '', blockerStatus: 'none', updateDate: localDateKey() },
+    ]))
+    render(<App />)
+    expect(await screen.findByRole('heading', { name: 'Alex Morgan' })).toBeInTheDocument()
+    expect(screen.getByText('Finished the API')).toBeInTheDocument()
+    expect(screen.getByText('Review the design')).toBeInTheDocument()
+    expect(screen.getByText('Waiting on access')).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Sam Lee' })).toBeInTheDocument()
+    expect(screen.getByText('No blockers')).toBeInTheDocument()
+  })
+
+  it('excludes updates from other calendar dates', async () => {
+    window.localStorage.setItem('standup-board-updates', JSON.stringify([
+      { id: 'yesterday', personName: 'Yesterday Person', yesterday: 'Old work', today: 'Old plan', blocker: 'Old issue', blockerStatus: 'blocked', updateDate: '2000-01-01' },
+    ]))
+    render(<App />)
+    expect(await screen.findByRole('heading', { name: 'A fresh start' })).toBeInTheDocument()
+    expect(screen.queryByText('Yesterday Person')).not.toBeInTheDocument()
+    expect(screen.getByText(/no updates have been posted today/i)).toBeInTheDocument()
   })
 
   it('shows a useful error when local data cannot be read', async () => {
