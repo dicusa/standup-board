@@ -16,6 +16,12 @@ export function saveDailyUpdate(updates: DailyUpdate[], update: DailyUpdate): Da
   return next
 }
 
+export function saveBlockerStatus(updates: DailyUpdate[], id: string, status: 'blocked' | 'resolved'): DailyUpdate[] {
+  const next = updates.map(item => item.id === id ? { ...item, blockerStatus: status } : item)
+  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(next))
+  return next
+}
+
 export function loadUpdates(): Promise<DailyUpdate[]> {
   return new Promise((resolve, reject) => {
     window.setTimeout(() => {
